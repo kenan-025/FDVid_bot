@@ -6,7 +6,7 @@ import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
 
-TOKEN = "8625235055:AAGWsXUMyA-CIrenKuVqqPUxfpzj9_YZczw"
+TOKEN = "8765351349:AAEBfAZu-n61vIdoEodRfzLlJRuB7hJx-hE"
 bot = telebot.TeleBot(TOKEN)
 ADMIN_ID = 8300128103
 

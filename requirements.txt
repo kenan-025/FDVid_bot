@@ -1,4 +1,4 @@
 telebot
 yt-dlp
 flask
-gunicorn
+functions-framework==3.*

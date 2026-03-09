@@ -341,3 +341,39 @@ try:
     bot.polling(none_stop=True)
 except Exception as e:
     print("❌ خطأ في تشغيل البوت:", e)
+
+from flask import Flask
+import threading
+import telebot
+import yt_dlp
+import os
+
+# --- الواجهة الوهمية لرضا Fly.io ---
+app_web = Flask(__name__)
+
+@app_web.route('/')
+def home():
+    return "البوت شغال الحمدلله"
+
+def run_web():
+    app_web.run(host='0.0.0.0', port=8080)
+
+threading.Thread(target=run_web, daemon=True).start()
+# ---------------------------------
+
+# --- كود البوت العادي حقك ---
+TOKEN = "8625235055:AAGWsXUMyA-CIrenKuVqqPUxfpzj9_YZczw"
+bot = telebot.TeleBot(TOKEN)
+
+@bot.message_handler(commands=['start'])
+def start(message):
+    bot.reply_to(message, "أهلاً، أرسل رابط فيديو")
+
+@bot.message_handler(func=lambda m: True)
+def download(message):
+    # باقي كود التحميل حقك
+    bot.reply_to(message, "جاري التحميل (هذا مجرد اختبار)")
+
+print("البوت شغال...")
+bot.polling()
+# --------------------------

@@ -5,14 +5,15 @@ import datetime
 import telebot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 import yt_dlp
-from flask import Flask, request
+import functions_framework
+import flask
 
 TOKEN = "8625235055:AAGWsXUMyA-CIrenKuVqqPUxfpzj9_YZczw"
 bot = telebot.TeleBot(TOKEN)
 ADMIN_ID = 8300128103
 
 # ===== إنشاء قاعدة البيانات =====
-conn = sqlite3.connect('bot_stats.db', check_same_thread=False)
+conn = sqlite3.connect('/tmp/bot_stats.db', check_same_thread=False)  # مهم: المسار /tmp للقراءة/الكتابة في GCF
 c = conn.cursor()
 
 c.execute('''CREATE TABLE IF NOT EXISTS users
@@ -63,7 +64,7 @@ def log_download(user_id, url, status):
                      WHERE user_id = ?''', (user_id,))
     conn.commit()
 
-# ===== أمر /start =====
+# ===== المعالجات حق البوت =====
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     register_user(message)
@@ -87,7 +88,6 @@ https://chat.whatsapp.com/ITMBBGPrNUx2uf5s002Hrh
     
     bot.reply_to(message, welcome_msg, reply_markup=markup, parse_mode="Markdown")
 
-# ===== أمر الإحصائيات =====
 @bot.message_handler(commands=['stats', 'state'])
 def show_stats_menu(message):
     if message.from_user.id != ADMIN_ID:
@@ -109,7 +109,6 @@ def show_stats_menu(message):
         parse_mode="Markdown"
     )
 
-# ===== معالج الأزرار =====
 @bot.callback_query_handler(func=lambda call: True)
 def handle_stats_buttons(call):
     if call.from_user.id != ADMIN_ID:
@@ -266,13 +265,11 @@ def handle_stats_buttons(call):
         extra = f"\n📊 *معلومة إضافية:*\n• عدد المستخدمين الذين حملوا فيديوهات: {unique_users}"
         bot.send_message(call.message.chat.id, extra, parse_mode="Markdown")
 
-# ===== زر التحميل =====
 @bot.message_handler(func=lambda m: m.text == "📥 تحميل فيديو")
 def ask_for_link(message):
     register_user(message)
     bot.send_message(message.chat.id, "🔗 أرسل لي رابط الفيديو الآن:")
 
-# ===== استقبال الرابط والتحميل =====
 @bot.message_handler(func=lambda m: True)
 def download_video(message):
     if message.text.startswith('/') or message.text == "📥 تحميل فيديو":
@@ -285,7 +282,7 @@ def download_video(message):
     try:
         ydl_opts = {
             'format': 'best[ext=mp4]/best',
-            'outtmpl': 'video.%(ext)s',
+            'outtmpl': '/tmp/video.%(ext)s',  # مهم: التخزين في /tmp
             'quiet': True,
         }
         
@@ -293,9 +290,9 @@ def download_video(message):
             ydl.download([url])
         
         video_file = None
-        for file in os.listdir('.'):
+        for file in os.listdir('/tmp'):
             if file.startswith('video.') and (file.endswith('.mp4') or file.endswith('.webm')):
-                video_file = file
+                video_file = os.path.join('/tmp', file)
                 break
         
         if video_file:
@@ -321,25 +318,12 @@ def download_video(message):
                             message.chat.id, waiting_msg.message_id)
         log_download(message.from_user.id, url, "failed")
 
-# ===== سيرفر الويب الخاص بالـ Webhook =====
-app = Flask(__name__)
-
-@app.route('/', methods=['POST'])
-def webhook():
-    update = request.get_data(as_text=True)
-    update = json.loads(update)
-    bot.process_new_updates([telebot.types.Update.de_json(update)])
-    return 'OK', 200
-
-@app.route('/', methods=['GET'])
-def index():
-    return 'البوت شغال!', 200
-
-# ===== تشغيل السيرفر =====
-if __name__ == '__main__':
-    print("✅ البوت شغال (Webhook Mode)...")
-    print("📊 أرسل /stats لعرض الإحصائيات")
-    print("👤 معرف المشرف:", ADMIN_ID)
-    
-    port = int(os.environ.get('PORT', 8080))
-    app.run(host='0.0.0.0', port=port)
+# ===== الدالة الرئيسية لـ Google Cloud Functions =====
+@functions_framework.http
+def telegram_webhook(request: flask.Request) -> flask.typing.ResponseReturnValue:
+    """دالة الـ webhook التي تستقبل تحديثات تيليغرام"""
+    if request.method == "POST":
+        update = telebot.types.Update.de_json(request.get_json(force=True))
+        bot.process_new_updates([update])
+        return "OK", 200
+    return "البوت شغال!", 200

@@ -13,7 +13,7 @@
 
     BOT_TOKEN = os.getenv("BOT_TOKEN", "")
     if not BOT_TOKEN:
-        raise SystemExit("BOT_TOKEN environment variable is required")
+        raise SystemExit("8765351349:AAHxpyIgMYSGSnN7OejIEab_EfKghGSawWA")
 
     MAX_MB = float(os.getenv("MAX_MB", "50"))  # default 50MB (Bot API standard limit)
     MAX_SIZE = int(MAX_MB * 1024 * 1024)
